@@ -25,6 +25,7 @@ jobs:
 
 
       - name: Clean issue notice
+        if: ${{ github.event.repository.has_issues }}
         uses: actions-cool/issues-helper@v3
         with:
           actions: 'close-issues'
@@ -43,7 +44,7 @@ jobs:
 
 
       - name: Sync check
-        if: failure()
+        if: ${{ failure() && github.event.repository.has_issues }}
         uses: actions-cool/issues-helper@v3
         with:
           actions: 'create-issue'
