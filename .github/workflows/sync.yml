@@ -40,7 +40,7 @@ jobs:
           upstream_sync_branch: main
           target_sync_branch: main
           # Use a PAT with workflow permission when syncing changes under .github/workflows.
-          target_repo_token: ${{ secrets.UPSTREAM_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          target_repo_token: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
           test_mode: false
 
 
