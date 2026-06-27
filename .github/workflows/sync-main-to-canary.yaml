@@ -32,6 +32,15 @@ jobs:
       - name: Sync main to canary
         if: github.ref == 'refs/heads/main'
         run: |
+          # Ensure canary exists in forks where the branch has not been created yet.
+          git fetch origin main
+          if ! git ls-remote --exit-code --heads origin canary >/dev/null 2>&1; then
+            echo "canary branch does not exist, creating it from main"
+            git checkout -B canary origin/main
+            git push origin canary
+            exit 0
+          fi
+
           # Find existing open sync PR by head branch prefix
           EXISTING_PR=$(gh pr list --base canary --state open --json number,headRefName \
             --jq '[.[] | select(.headRefName | startswith("sync/main-to-canary-"))][0] // empty')
