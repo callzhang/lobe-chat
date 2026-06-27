@@ -28,10 +28,25 @@ jobs:
 
       - name: Clean issue notice
         if: ${{ github.event.repository.has_issues }}
-        uses: actions-cool/issues-helper@v3
-        with:
-          actions: 'close-issues'
-          labels: '🚨 Sync Fail'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYNC_FAIL_LABEL: '🚨 Sync Fail'
+        run: |
+          set -euo pipefail
+
+          gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --label "$SYNC_FAIL_LABEL" \
+            --json number \
+            --jq '.[].number' |
+          while read -r issue_number; do
+            if [ -n "$issue_number" ]; then
+              gh issue close "$issue_number" \
+                --repo "$GITHUB_REPOSITORY" \
+                --reason completed
+            fi
+          done
 
 
       - name: Sync upstream changes
@@ -48,12 +63,29 @@ jobs:
 
       - name: Sync check
         if: ${{ failure() && github.event.repository.has_issues }}
-        uses: actions-cool/issues-helper@v3
-        with:
-          actions: 'create-issue'
-          title: '🚨 同步失败 | Sync Fail'
-          labels: '🚨 Sync Fail'
-          body: |
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYNC_FAIL_LABEL: '🚨 Sync Fail'
+        run: |
+          set -euo pipefail
+
+          if ! gh label list \
+            --repo "$GITHUB_REPOSITORY" \
+            --search "$SYNC_FAIL_LABEL" \
+            --json name \
+            --jq '.[].name' |
+            grep -Fxq "$SYNC_FAIL_LABEL"; then
+            gh label create "$SYNC_FAIL_LABEL" \
+              --repo "$GITHUB_REPOSITORY" \
+              --color d73a4a \
+              --description 'Upstream sync failed'
+          fi
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title '🚨 同步失败 | Sync Fail' \
+            --label "$SYNC_FAIL_LABEL" \
+            --body-file - <<'EOF'
             Due to a change in the workflow file of the [LobeChat][lobechat] upstream repository, GitHub has automatically suspended the scheduled automatic update. You need to manually sync your fork. Please refer to the detailed [Tutorial][tutorial-en-US] for instructions.
 
 
@@ -66,3 +98,4 @@ jobs:
             [lobechat]: https://github.com/lobehub/lobe-chat
             [tutorial-zh-CN]: https://lobehub.com/zh/docs/self-hosting/advanced/upstream-sync
             [tutorial-en-US]: https://lobehub.com/docs/self-hosting/advanced/upstream-sync
+          EOF
